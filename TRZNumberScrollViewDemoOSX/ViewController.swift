@@ -70,6 +70,6 @@ class BackgroundColorView: NSView {
     
     override func draw(_ dirtyRect: NSRect) {
         backgroundColor?.setFill()
-        NSRectFill(bounds)
+        bounds.fill()
     }
 }

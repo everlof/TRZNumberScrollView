@@ -46,7 +46,8 @@ public class AnimationCurveEditor: NSControl {
         didSet { needsDisplay = true }
     }
 
-    dynamic public var startControlPointValue:CGPoint = CGPoint(x: 0, y: 0) {
+    @objc
+    public var startControlPointValue:CGPoint = CGPoint(x: 0, y: 0) {
         didSet { needsDisplay = true }
     }
     
@@ -62,7 +63,8 @@ public class AnimationCurveEditor: NSControl {
         didSet { needsDisplay = true }
     }
     
-    dynamic public var endControlPointValue:CGPoint = CGPoint(x: 1, y: 1) {
+    @objc
+    public var endControlPointValue:CGPoint = CGPoint(x: 1, y: 1) {
         didSet { needsDisplay = true }
     }
     
@@ -208,7 +210,7 @@ public class AnimationCurveEditor: NSControl {
         
         if let backgroundColor = backgroundColor {
             backgroundColor.setFill()
-            NSRectFill(rect)
+            rect.fill()
         }
         
         if drawsGrid {
@@ -224,7 +226,7 @@ public class AnimationCurveEditor: NSControl {
         guard gridDivisions > 0 else { return }
         
         let subLength = rect.width / CGFloat(gridDivisions)
-        guard let ctx = NSGraphicsContext.current()?.cgContext else { return }
+        guard let ctx = NSGraphicsContext.current?.cgContext else { return }
         ctx.saveGState()
         ctx.setStrokeColor(gridStrokeColor.cgColor)
         ctx.setLineWidth(gridLineWidth)
@@ -244,7 +246,7 @@ public class AnimationCurveEditor: NSControl {
     }
     
     private func drawCurve(_ rect: CGRect) {
-        guard let ctx = NSGraphicsContext.current()?.cgContext else { return }
+        guard let ctx = NSGraphicsContext.current?.cgContext else { return }
         ctx.saveGState()
         ctx.setStrokeColor(curveStrokeColor.cgColor)
         ctx.setLineWidth(curveLineWidth)
@@ -256,7 +258,7 @@ public class AnimationCurveEditor: NSControl {
     }
     
     private func drawHandles(_ rect:CGRect) {
-        guard let ctx = NSGraphicsContext.current()?.cgContext else { return }
+        guard let ctx = NSGraphicsContext.current?.cgContext else { return }
         ctx.saveGState()
         
         let (control1, control2) = controlPointsForRect(rect)

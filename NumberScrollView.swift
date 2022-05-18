@@ -438,16 +438,20 @@ public class NumberScrollLayer: CALayer {
         return CGSize(width: digitsImage.size.width, height: digitsImage.size.height / CGFloat(10) / CGFloat(repetitions))
     }
     
-    private func attributes(forFont font:TRZFont) -> [String: AnyObject] {
+    private func attributes(forFont font:TRZFont) -> [NSAttributedString.Key: AnyObject] {
         #if os(OSX)
-            let style = NSParagraphStyle.default().mutableCopy() as! NSMutableParagraphStyle
+            let style = NSParagraphStyle.default.mutableCopy() as! NSMutableParagraphStyle
         #elseif os(iOS) || os(tvOS)
             let style = NSParagraphStyle.default.mutableCopy() as! NSMutableParagraphStyle
         #endif
         style.alignment = .center
         style.lineBreakMode = .byClipping
         style.lineSpacing = 0
-        return [NSFontAttributeName: font, NSParagraphStyleAttributeName: style, NSForegroundColorAttributeName: textColor]
+        return [
+            NSAttributedString.Key.font: font,
+            NSAttributedString.Key.paragraphStyle: style,
+            NSAttributedString.Key.foregroundColor: textColor
+        ]
     }
     
     private let repetitions = 2
@@ -550,7 +554,7 @@ public class NumberScrollLayer: CALayer {
     
     private func currentGraphicsContext() -> CGContext? {
         #if os(OSX)
-            return NSGraphicsContext.current()?.cgContext
+            return NSGraphicsContext.current?.cgContext
         #elseif os(iOS) || os(tvOS)
             return UIGraphicsGetCurrentContext()
         #endif
@@ -637,17 +641,17 @@ public class NumberScrollLayer: CALayer {
     public private(set) var boundingSize = CGSize.zero
     
     private func recolorScrollLayers() {
-        if contentLayers.count != text.characters.count {
+        if contentLayers.count != text.count {
             relayoutScrollLayers()
             setScrollLayerContents()
             return
         }
         
         var contentLayersIndex = contentLayers.startIndex
-        var charactersIndex = text.characters.startIndex
+        var charactersIndex = text.startIndex
         
-        while charactersIndex < text.characters.endIndex {
-            let char = text.characters[charactersIndex]
+        while charactersIndex < text.endIndex {
+            let char = text[charactersIndex]
             if let _ = Int(String(char)) {
                 let scrollLayer = contentLayers[contentLayersIndex]
                 let contentsLayer = scrollLayer.sublayers![0]
@@ -660,7 +664,7 @@ public class NumberScrollLayer: CALayer {
             } else {
                 let contentsLayer = contentLayers[contentLayersIndex]
                 
-                let needsVerticallyCenteredColon = needsVerticallyCenteredColonForCharacterAtIndex(charactersIndex, characters: text.characters)
+                let needsVerticallyCenteredColon = needsVerticallyCenteredColonForCharacterAtIndex(charactersIndex, characters: text)
                 let font = needsVerticallyCenteredColon ? self.font.verticallyCenteredColonFont : self.font
                 
                 let image = createImage(forNonDigit: char, font: font)
@@ -673,11 +677,11 @@ public class NumberScrollLayer: CALayer {
             }
             
             contentLayersIndex = (contentLayersIndex + 1)
-            charactersIndex = text.characters.index(after: charactersIndex)
+            charactersIndex = text.index(after: charactersIndex)
         }
     }
     
-    private func needsVerticallyCenteredColonForCharacterAtIndex(_ index:String.CharacterView.Index, characters:String.CharacterView) -> Bool {
+    private func needsVerticallyCenteredColonForCharacterAtIndex(_ index: String.Index, characters: String) -> Bool {
         guard characters[index] == ":" else { return false }
         
         if index != characters.startIndex {
@@ -714,10 +718,10 @@ public class NumberScrollLayer: CALayer {
         var newLayers = [CALayer]()
         
         var contentLayersIndex = contentLayers.startIndex
-        var charactersIndex = text.characters.startIndex
+        var charactersIndex = text.startIndex
         
-        while charactersIndex < text.characters.endIndex {
-            let char = text.characters[charactersIndex]
+        while charactersIndex < text.endIndex {
+            let char = text[charactersIndex]
             let currentLayer:CALayer? = (contentLayersIndex < contentLayers.endIndex) ? contentLayers[contentLayersIndex] : nil
             if let _ = Int(String(char)) {
                 let scrollLayer:CALayer
@@ -756,7 +760,7 @@ public class NumberScrollLayer: CALayer {
             } else {
                 let charLayer:CALayer
                 
-                let needsVerticallyCenteredColon = needsVerticallyCenteredColonForCharacterAtIndex(charactersIndex, characters: text.characters)
+                let needsVerticallyCenteredColon = needsVerticallyCenteredColonForCharacterAtIndex(charactersIndex, characters: text)
                 let currentLayerMatches =
                     currentLayer?.value(forKey: "myContents") as? String == String(char) &&
                         currentLayer?.value(forKey: "verticallyCenteredColon") as? Bool == needsVerticallyCenteredColon
@@ -794,7 +798,7 @@ public class NumberScrollLayer: CALayer {
             }
             
             contentLayersIndex = (contentLayersIndex + 1)
-            charactersIndex = text.characters.index(after: charactersIndex)
+            charactersIndex = text.index(after: charactersIndex)
         }
         
         while contentLayersIndex < contentLayers.endIndex {
@@ -807,7 +811,7 @@ public class NumberScrollLayer: CALayer {
     }
     
     private func setScrollLayerContents() {
-        for (i, char) in text.characters.enumerated() {
+        for (i, char) in text.enumerated() {
             if let digit = Int(String(char)) {
                 contentLayers[i].bounds.origin = upperRect(forDigit: digit).origin
             }
@@ -843,7 +847,7 @@ public class NumberScrollLayer: CALayer {
         var offset = durationOffset * 2
         performWithoutImplicitAnimation() {
             CATransaction.setCompletionBlock(completion)
-            for (i, char) in text.characters.enumerated() {
+            for (i, char) in text.enumerated() {
                 if let digit = Int(String(char)) {
                     let scrollLayer = contentLayers[i]
                     let animation = CABasicAnimation(keyPath: "bounds.origin.y")
@@ -899,9 +903,9 @@ private extension TRZFont {
     var monospacedDigitsFont:TRZFont {
         let descriptor = self.fontDescriptor
         #if os(OSX)
-            let TRZFontFeatureSettingsAttribute = NSFontFeatureSettingsAttribute
-            let TRZFontFeatureTypeIdentifierKey = NSFontFeatureTypeIdentifierKey
-            let TRZFontFeatureSelectorIdentifierKey = NSFontFeatureSelectorIdentifierKey
+        let TRZFontFeatureSettingsAttribute = NSFontDescriptor.AttributeName.featureSettings
+        let TRZFontFeatureTypeIdentifierKey = NSFontDescriptor.FeatureKey.typeIdentifier
+        let TRZFontFeatureSelectorIdentifierKey = NSFontDescriptor.FeatureKey.selectorIdentifier
         #elseif os(iOS) || os(tvOS)
             let TRZFontFeatureSettingsAttribute = UIFontDescriptorFeatureSettingsAttribute
             let TRZFontFeatureTypeIdentifierKey = UIFontFeatureTypeIdentifierKey
@@ -930,9 +934,9 @@ private extension TRZFont {
         let descriptor = self.fontDescriptor
         #if os(OSX)
             guard self.familyName?.hasPrefix(".") == true else { return self }
-            let TRZFontFeatureSettingsAttribute = NSFontFeatureSettingsAttribute
-            let TRZFontFeatureTypeIdentifierKey = NSFontFeatureTypeIdentifierKey
-            let TRZFontFeatureSelectorIdentifierKey = NSFontFeatureSelectorIdentifierKey
+            let TRZFontFeatureSettingsAttribute = NSFontDescriptor.AttributeName.featureSettings
+            let TRZFontFeatureTypeIdentifierKey = NSFontDescriptor.FeatureKey.typeIdentifier
+            let TRZFontFeatureSelectorIdentifierKey = NSFontDescriptor.FeatureKey.selectorIdentifier
         #elseif os(iOS) || os(tvOS)
             guard self.familyName.hasPrefix(".") == true else { return self }
             let TRZFontFeatureSettingsAttribute = UIFontDescriptorFeatureSettingsAttribute

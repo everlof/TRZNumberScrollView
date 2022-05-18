@@ -26,8 +26,9 @@ class NumberScrollViewParametersViewController: NSViewController, NSControlTextE
     @IBOutlet weak var downDirectionButton: NSButton!
     
     weak var delegate:NumberScrollViewParametersViewControllerDelegate?
-    
-    private(set) dynamic var animationEnabled:Bool = true {
+
+    @objc
+    private(set) var animationEnabled: Bool = true {
         didSet {
             if oldValue != animationEnabled {
                 delegate?.parametersViewController?(self, didChangeAnimationEnabled: animationEnabled)
@@ -35,7 +36,8 @@ class NumberScrollViewParametersViewController: NSViewController, NSControlTextE
         }
     }
 
-    private(set) dynamic var text:String = "123456" {
+    @objc
+    private(set) var text: String = "123456" {
         didSet {
             if oldValue != text {
                 delegate?.parametersViewController?(self, didChangeText: text)
@@ -45,8 +47,9 @@ class NumberScrollViewParametersViewController: NSViewController, NSControlTextE
             }
         }
     }
-    
-    private(set) dynamic var animationDuration:TimeInterval = 1.0 {
+
+    @objc
+    private(set) var animationDuration:TimeInterval = 1.0 {
         didSet {
             if oldValue != animationDuration {
                 delegate?.parametersViewController?(self, didChangeAnimationDuration: animationDuration)
@@ -54,7 +57,8 @@ class NumberScrollViewParametersViewController: NSViewController, NSControlTextE
         }
     }
     
-    dynamic var startControlPoint:ObservablePoint = ObservablePoint(x: 0, y: 0) {
+    @objc
+    var startControlPoint: ObservablePoint = ObservablePoint(x: 0, y: 0) {
         didSet {
             if oldValue != startControlPoint {
                 delegate?.parametersViewController?(self, didChangeAnimationCurve: animationCurve)
@@ -62,25 +66,29 @@ class NumberScrollViewParametersViewController: NSViewController, NSControlTextE
         }
     }
     
-    dynamic var endControlPoint:ObservablePoint = ObservablePoint(x: 0.1, y: 1)  {
+    @objc
+    var endControlPoint: ObservablePoint = ObservablePoint(x: 0.1, y: 1)  {
         didSet {
             if oldValue != endControlPoint {
                 delegate?.parametersViewController?(self, didChangeAnimationCurve: animationCurve)
             }
         }
     }
-    
-    private(set) dynamic var font:NSFont = NSFont.systemFont(ofSize: 48) {
+
+    @objc
+    private(set) var font: NSFont = NSFont.systemFont(ofSize: 48) {
         didSet {
             if oldValue != font {
                 delegate?.parametersViewController?(self, didChangeFont: font)
             }
         }
     }
-    
-    private dynamic var displayFont:NSFont = NSFont.systemFont(ofSize: NSFont.systemFontSize())
-    
-    private(set) dynamic var textColor:NSColor = NSColor.black {
+
+    @objc
+    private var displayFont:NSFont = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+
+    @objc
+    private(set) var textColor:NSColor = NSColor.black {
         didSet {
             if oldValue != textColor {
                 delegate?.parametersViewController?(self, didChangeTextColor: textColor)
@@ -88,7 +96,7 @@ class NumberScrollViewParametersViewController: NSViewController, NSControlTextE
         }
     }
     
-    private(set) var animationDirection:NumberScrollView.AnimationDirection = .up {
+    private(set) var animationDirection: NumberScrollView.AnimationDirection = .up {
         didSet {
             if oldValue != animationDirection {
                 delegate?.parametersViewController?(self, didChangeAnimationDirection: animationDirection)
@@ -96,11 +104,12 @@ class NumberScrollViewParametersViewController: NSViewController, NSControlTextE
         }
     }
     
-    var animationCurve:CAMediaTimingFunction {
+    var animationCurve: CAMediaTimingFunction {
         return CAMediaTimingFunction(controlPoints: Float(startControlPoint.x), Float(startControlPoint.y), Float(endControlPoint.x), Float(endControlPoint.y))
     }
     
-    dynamic var automaticallyCommit:Bool = true
+    @objc
+    var automaticallyCommit:Bool = true
     
     func configureAnimationCurveEditor() {
         animationCurveEditor.startControlPointValue = self.startControlPoint.pointValue
@@ -111,11 +120,12 @@ class NumberScrollViewParametersViewController: NSViewController, NSControlTextE
         super.viewDidLoad()
         
         configureAnimationCurveEditor();
-        
-        animationCurveEditor.bind("enabled", to: self, withKeyPath: "animationEnabled", options: nil)
-        let toNSValueOptions = [NSValueTransformerBindingOption: ObservablePointToNSValueTransformer()]
-        bind("startControlPoint", to: animationCurveEditor, withKeyPath: "startControlPointValue", options: toNSValueOptions)
-        bind("endControlPoint", to: animationCurveEditor, withKeyPath: "endControlPointValue", options: toNSValueOptions)
+
+
+        animationCurveEditor.bind(NSBindingName("enabled"), to: self, withKeyPath: "animationEnabled", options: nil)
+        let toNSValueOptions = [NSBindingOption.valueTransformer: ObservablePointToNSValueTransformer()]
+        bind(NSBindingName("startControlPoint"), to: animationCurveEditor!, withKeyPath: "startControlPointValue", options: toNSValueOptions)
+        bind(NSBindingName("endControlPoint"), to: animationCurveEditor!, withKeyPath: "endControlPointValue", options: toNSValueOptions)
     }
     
     @IBAction private func didEndEditingPointTextField(_ sender: NSTextField) {
@@ -133,19 +143,20 @@ class NumberScrollViewParametersViewController: NSViewController, NSControlTextE
     }
     
     @IBAction private func didChangeDirectionRadioButton(_ sender: NSButton) {
-        animationDirection = (upDirectionButton.state == NSOnState) ? .up : .down
+        animationDirection = (upDirectionButton.state == NSControl.StateValue.on) ? .up : .down
     }
     
     @IBAction private func didClickSetFont(_ sender: NSButton) {
-        let fontManager = NSFontManager.shared()
+        let fontManager = NSFontManager.shared
         fontManager.target = self
         fontManager.setSelectedFont(self.font, isMultiple: false)
         fontManager.orderFrontFontPanel(self)
     }
-    
-    @objc override func changeFont(_ sender: Any?) {
-        font = (sender as? NSFontManager)?.convert(font) ?? NSFont.systemFont(ofSize: NSFont.systemFontSize())
-        displayFont = NSFont(descriptor: font.fontDescriptor, size: NSFont.systemFontSize())!
+
+
+    @objc func changeFont(_ sender: Any?) {
+        font = (sender as? NSFontManager)?.convert(font) ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        displayFont = NSFont(descriptor: font.fontDescriptor, size: NSFont.systemFontSize)!
     }
     
     @objc private func changeAttributes(_ sender: AnyObject?) {
@@ -202,15 +213,18 @@ class ObservablePointToNSValueTransformer: ValueTransformer {
 }
 
 class ObservablePoint:NSObject {
-    dynamic var x:CGFloat = 0
-    dynamic var y:CGFloat = 0
+    @objc
+    var x: CGFloat = 0
+
+    @objc
+    var y: CGFloat = 0
     
-    init(x:CGFloat, y:CGFloat) {
+    init(x: CGFloat, y: CGFloat) {
         self.x = x
         self.y = y
     }
     
-    var pointValue:CGPoint {
+    var pointValue: CGPoint {
         return CGPoint(x: x, y: y)
     }
 }
