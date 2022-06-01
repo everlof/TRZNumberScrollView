@@ -1,3 +1,25 @@
+// The MIT License (MIT)
+//
+// Copyright (c) 2016 Thomas Zhao
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 #if os(OSX)
     import AppKit
     
@@ -42,10 +64,11 @@ public class NumberScrollView: TRZView {
         }
     }
     
-    public func setText(_ text:String, animated:Bool, completion:(()->Void)? = nil) {
+    public func setText(_ text: String, animated: Bool, completion: (() -> Void)? = nil) {
+        let oldText = self.text
         self.text = text
         if animated {
-            self.numberScrollLayer.playScrollAnimation(completion)
+            self.numberScrollLayer.playScrollAnimation(oldText: oldText, completion)
         } else {
             completion?()
         }
@@ -61,7 +84,7 @@ public class NumberScrollView: TRZView {
         }
     }
     
-    public var textColor:TRZColor {
+    public var textColor: TRZColor {
         get { return numberScrollLayer.textColor }
         set { performWithoutImplicitAnimation() {
             numberScrollLayer.textColor = newValue
@@ -69,7 +92,7 @@ public class NumberScrollView: TRZView {
         }
     }
     
-    public var font:TRZFont {
+    public var font: TRZFont {
         get { return numberScrollLayer.font }
         set {
             let oldSize = numberScrollLayer.boundingSize
@@ -135,6 +158,7 @@ public class NumberScrollView: TRZView {
             self.wantsLayer = true
         #endif
         configureImageCache()
+        numberScrollLayer.masksToBounds = true
     }
     
     private var numberScrollLayer:NumberScrollLayer {
@@ -281,30 +305,41 @@ public class NumberScrollLayer: CALayer {
             super.init()
             
             #if !os(OSX)
-                NotificationCenter.default.addObserver(self, selector: #selector(DefaultImageCache.evict), name: .UIApplicationDidReceiveMemoryWarning, object: nil)
-                NotificationCenter.default.addObserver(self, selector: #selector(DefaultImageCache.evict), name: .UIApplicationDidEnterBackground, object: nil)
-                if #available(iOSApplicationExtension 8.2, *) {
-                    NotificationCenter.default.addObserver(self, selector: #selector(DefaultImageCache.evict), name: .NSExtensionHostDidEnterBackground, object: nil)
-                }
+            NotificationCenter.default.addObserver(self,
+                                                   selector: #selector(DefaultImageCache.evict),
+                                                   name: UIApplication.didReceiveMemoryWarningNotification,
+                                                   object: nil)
+            NotificationCenter.default.addObserver(self,
+                                                   selector: #selector(DefaultImageCache.evict),
+                                                   name: UIApplication.didEnterBackgroundNotification,
+                                                   object: nil)
+            if #available(iOSApplicationExtension 8.2, *) {
+                NotificationCenter.default.addObserver(self,
+                                                       selector: #selector(DefaultImageCache.evict),
+                                                       name: .NSExtensionHostDidEnterBackground, object: nil)
+            }
             #endif
         }
-        
-        deinit {
-            #if !os(OSX)
-                NotificationCenter.default.removeObserver(self)
-            #endif
-        }
-        
+
         private lazy var cachedImages = [CacheKey: AcquireRelinquishBox<TRZImage>]()
         
         private struct CacheKey: Equatable, Hashable {
-            var key:String
-            var font:TRZFont
-            var color:TRZColor
-            var backgroundColor:TRZColor?
-            var fontSmoothingBackgroundColor:TRZColor?
+            var key: String
+            var font: TRZFont
+            var color: TRZColor
+            var backgroundColor: TRZColor?
+            var fontSmoothingBackgroundColor: TRZColor?
+
             var hashValue:Int {
                 return key.hashValue ^ font.hashValue ^ color.hashValue ^ (fontSmoothingBackgroundColor?.hashValue ?? 0) ^ (backgroundColor?.hashValue ?? 0)
+            }
+
+            func hash(into hasher: inout Hasher) {
+                hasher.combine(key)
+                hasher.combine(font)
+                hasher.combine(color)
+                hasher.combine(fontSmoothingBackgroundColor)
+                hasher.combine(backgroundColor)
             }
             
             static func ==(lhs:CacheKey, rhs:CacheKey) -> Bool {
@@ -351,12 +386,12 @@ public class NumberScrollLayer: CALayer {
         }
     }
     
-    public func setFont(_ font:TRZFont, textColor:TRZColor) {
+    public func setFont(_ font:TRZFont, textColor: TRZColor) {
         _textColor = textColor
         self.font = font
     }
     
-    public var text:String = "" {
+    public var text: String = "0" {
         didSet {
             if text != oldValue {
                 performWithoutImplicitAnimation() {
@@ -516,9 +551,9 @@ public class NumberScrollLayer: CALayer {
         let str = String(character) as NSString
         let fontAttributes = attributes(forFont: font)
         #if os(OSX)
-            let size = str.size(withAttributes: fontAttributes)
+        let size = str.size(withAttributes: fontAttributes)
         #elseif os(iOS) || os(tvOS)
-            let size = str.size(attributes: fontAttributes)
+        let size = str.size(withAttributes: fontAttributes)
         #endif
         
         var imageSize = digitsImageIndividualDigitSize
@@ -592,9 +627,9 @@ public class NumberScrollLayer: CALayer {
         
         for digit in digits {
             #if os(OSX)
-                maxSize = maxSize.union((digit as NSString).size(withAttributes: fontAttributes))
+            maxSize = maxSize.union((digit as NSString).size(withAttributes: fontAttributes))
             #elseif os(iOS) || os(tvOS)
-                maxSize = maxSize.union((digit as NSString).size(attributes: fontAttributes))
+            maxSize = maxSize.union((digit as NSString).size(withAttributes: fontAttributes))
             #endif
         }
         
@@ -839,16 +874,26 @@ public class NumberScrollLayer: CALayer {
         case down
     }
     
-    public func playScrollAnimation(_ completion:(()->Void)? = nil) {
+    public func playScrollAnimation(oldText: String, _ completion:(()->Void)? = nil) {
         if animationDuration == 0 { return }
         
         let durationOffset = animationDuration/Double(contentLayers.count + 1)
-        
         var offset = durationOffset * 2
+
+        var animationDirection = self.animationDirection
+        if let oldInt = Int(oldText), let newInt = Int(text) {
+            animationDirection = newInt > oldInt ? .up : .down
+        }
+
         performWithoutImplicitAnimation() {
             CATransaction.setCompletionBlock(completion)
             for (i, char) in text.enumerated() {
                 if let digit = Int(String(char)) {
+                    if let index = oldText.index(oldText.startIndex, offsetBy: i, limitedBy: oldText.endIndex),
+                       oldText[safe: index] == char {
+                        continue
+                    }
+
                     let scrollLayer = contentLayers[i]
                     let animation = CABasicAnimation(keyPath: "bounds.origin.y")
                     let upOrigin = upperRect(forDigit: digit).origin.y
@@ -907,9 +952,9 @@ private extension TRZFont {
         let TRZFontFeatureTypeIdentifierKey = NSFontDescriptor.FeatureKey.typeIdentifier
         let TRZFontFeatureSelectorIdentifierKey = NSFontDescriptor.FeatureKey.selectorIdentifier
         #elseif os(iOS) || os(tvOS)
-            let TRZFontFeatureSettingsAttribute = UIFontDescriptorFeatureSettingsAttribute
-            let TRZFontFeatureTypeIdentifierKey = UIFontFeatureTypeIdentifierKey
-            let TRZFontFeatureSelectorIdentifierKey = UIFontFeatureSelectorIdentifierKey
+        let TRZFontFeatureSettingsAttribute = UIFontDescriptor.AttributeName.featureSettings
+        let TRZFontFeatureTypeIdentifierKey = UIFontDescriptor.FeatureKey.featureIdentifier
+        let TRZFontFeatureSelectorIdentifierKey = UIFontDescriptor.FeatureKey.typeIdentifier
         #endif
         
         let attributes = [
@@ -933,15 +978,15 @@ private extension TRZFont {
         
         let descriptor = self.fontDescriptor
         #if os(OSX)
-            guard self.familyName?.hasPrefix(".") == true else { return self }
-            let TRZFontFeatureSettingsAttribute = NSFontDescriptor.AttributeName.featureSettings
-            let TRZFontFeatureTypeIdentifierKey = NSFontDescriptor.FeatureKey.typeIdentifier
-            let TRZFontFeatureSelectorIdentifierKey = NSFontDescriptor.FeatureKey.selectorIdentifier
+        guard self.familyName?.hasPrefix(".") == true else { return self }
+        let TRZFontFeatureSettingsAttribute = NSFontDescriptor.AttributeName.featureSettings
+        let TRZFontFeatureTypeIdentifierKey = NSFontDescriptor.FeatureKey.typeIdentifier
+        let TRZFontFeatureSelectorIdentifierKey = NSFontDescriptor.FeatureKey.selectorIdentifier
         #elseif os(iOS) || os(tvOS)
-            guard self.familyName.hasPrefix(".") == true else { return self }
-            let TRZFontFeatureSettingsAttribute = UIFontDescriptorFeatureSettingsAttribute
-            let TRZFontFeatureTypeIdentifierKey = UIFontFeatureTypeIdentifierKey
-            let TRZFontFeatureSelectorIdentifierKey = UIFontFeatureSelectorIdentifierKey
+        guard self.familyName.hasPrefix(".") == true else { return self }
+        let TRZFontFeatureSettingsAttribute = UIFontDescriptor.AttributeName.featureSettings
+        let TRZFontFeatureTypeIdentifierKey = UIFontDescriptor.FeatureKey.featureIdentifier
+        let TRZFontFeatureSelectorIdentifierKey = UIFontDescriptor.FeatureKey.typeIdentifier
         #endif
         
         let attributes = [
